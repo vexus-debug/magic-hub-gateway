@@ -1,3 +1,4 @@
+import { isInvoiced } from "@/hooks/useVisitFlow";
 import { useState, useEffect } from "react";
 import { usePatientContext } from "@/hooks/usePatientContext";
 import { PatientVisitBar } from "@/components/dashboard/PatientVisitBar";
@@ -448,6 +449,7 @@ export default function TreatmentsPage() {
                 <span>Start: {viewingPlan.start_date || "—"}</span>
                 <span>Target: {viewingPlan.target_end_date || "—"}</span>
                 <span className="font-semibold text-foreground">{formatCurrency(viewingPlan.total_estimated_cost)}</span>
+                <span className="ml-2 text-xs">Billable now (in progress + completed): <span className="font-semibold text-secondary">{formatCurrency(planItems.filter((i: any) => i.status === "completed" || i.status === "in-progress").reduce((s: number, i: any) => s + Number(i.estimated_cost || 0), 0))}</span></span>
               </div>
 
               <div className="space-y-2">
@@ -470,8 +472,8 @@ export default function TreatmentsPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge className={`text-[10px] ${itemStatusStyles[item.status] || ""}`}>{item.status}</Badge>
-                          {isClinical && item.status !== "completed" && (
+                          <Badge className={`text-[10px] ${itemStatusStyles[item.status] || ""}`}>{isInvoiced(item) ? "invoiced" : item.status}</Badge>
+                          {isClinical && !isInvoiced(item) && (
                             <Select value={item.status} onValueChange={(v) => updateItemStatus.mutate({ id: item.id, status: v })}>
                               <SelectTrigger className="h-7 w-24 text-[10px]"><SelectValue /></SelectTrigger>
                               <SelectContent>

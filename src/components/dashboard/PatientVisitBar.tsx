@@ -22,10 +22,10 @@ export function PatientVisitBar({ patientId, onClear }: { patientId: string; onC
   const name = patient ? `${patient.first_name} ${patient.last_name}` : "Patient";
 
   const items = [
+    { page: "consent-forms", label: "Consent", icon: FileSignature, extra: { new: "1" } },
     terms.showDentalChart ? { page: "dental-charts", label: "Chart", icon: Grid3x3 } : null,
     { page: "treatments", label: "Plan", icon: ClipboardList, extra: { tab: "plans" } },
     { page: "prescriptions", label: "Rx", icon: Pill, extra: { new: "1" } },
-    { page: "consent-forms", label: "Consent", icon: FileSignature, extra: { new: "1" } },
     { page: "patient", label: "Notes", icon: NotebookPen },
   ].filter(Boolean) as { page: string; label: string; icon: any; extra?: Record<string, string> }[];
 
@@ -47,7 +47,7 @@ export function PatientVisitBar({ patientId, onClear }: { patientId: string; onC
             const Icon = it.icon;
             return (
               <Button key={it.page} asChild size="sm" variant={active ? "secondary" : "ghost"} className={cn("h-8 px-2 text-xs", active && "pointer-events-none")}>
-                <Link to={link(it.page, patientId, it.extra)}>
+                <Link to={it.page === "patient" ? `${link("patient", patientId)}?tab=notes` : link(it.page, patientId, it.extra)}>
                   <Icon className="h-3.5 w-3.5 sm:mr-1" />
                   <span className="hidden sm:inline">{it.label}</span>
                 </Link>

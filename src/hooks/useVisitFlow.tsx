@@ -107,7 +107,31 @@ export function useAddChartItemToPlan() {
   });
 }
 
+export const INVOICED_TAG = "[invoiced]";
+/** Plan items are locked once they've been sent to an invoice. */
+export const isInvoiced = (i: { notes?: string | null }) => !!i.notes?.includes(INVOICED_TAG);
+
+/** Tags plan items as invoiced so they drop out of the visit hand-off and lock their status. */
+export function useMarkPlanItemsInvoiced() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (items: { id: string; notes?: string | null }[]) => {
+      for (const i of items) {
+        const notes = `${i.notes ? i.notes + " " : ""}${INVOICED_TAG} ${today()}`;
+        const { error } = await (supabase as any).from("treatment_plan_items").update({ notes }).eq("id", i.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["treatment-plans"] });
+      qc.invalidateQueries({ queryKey: ["treatment-plan-items"] });
+      qc.invalidateQueries({ queryKey: ["patient-plan-items"] });
+    },
+  });
+}
+
 export interface PatientPlanItem {
+  notes?: string | null;
   id: string;
   plan_id: string;
   treatment_id: string | null;
@@ -134,7 +158,7 @@ export function usePatientPlanItems(patientId?: string | null) {
         .order("visit_number", { ascending: true });
       if (error) throw error;
       return (data || [])
-        .filter((i: any) => i.status !== "skipped" && (i.status !== "completed" || i.completed_date === today()))
+        .filter((i: any) => i.status !== "skipped" && !isInvoiced(i))
         .map((i: any) => ({ ...i, plan_name: i.treatment_plans?.plan_name || "Plan" })) as PatientPlanItem[];
     },
   });
