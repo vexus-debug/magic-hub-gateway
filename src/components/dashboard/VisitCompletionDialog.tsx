@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Receipt, Pill, CalendarPlus, Printer, Plus, CheckCircle2 } from "lucide-react";
 import { useTreatments } from "@/hooks/useTreatments";
-import { usePatientPlanItems, useTodaysPrescriptions, useCompletePlanItems, useMarkPlanItemsInvoiced } from "@/hooks/useVisitFlow";
+import { usePatientPlanItems, useTodaysPrescriptions, useCompletePlanItems, useMarkPlanItemsInvoiced, useCompleteAppointment } from "@/hooks/useVisitFlow";
 import { CreateInvoiceDialog } from "@/components/dashboard/CreateInvoiceDialog";
 import { CreatePrescriptionDialog } from "@/components/dashboard/CreatePrescriptionDialog";
 import { BookAppointmentDialog } from "@/components/dashboard/BookAppointmentDialog";
@@ -20,6 +20,8 @@ interface Props {
   patientName?: string;
   /** Treatment booked on the appointment, auto-included in the bill. */
   appointmentTreatmentId?: string | null;
+  /** Appointment this visit belongs to — marked completed when the visit is finished. */
+  appointmentId?: string | null;
 }
 
 const naira = (n: number) => `₦${Number(n || 0).toLocaleString()}`;
