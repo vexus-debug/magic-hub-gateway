@@ -203,6 +203,23 @@ export function useCompletePlanItems() {
   });
 }
 
+/** Marks an appointment completed once its visit is finished. */
+export function useCompleteAppointment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (appointmentId: string) => {
+      const { error } = await (supabase as any)
+        .from("appointments")
+        .update({ status: "completed" })
+        .eq("id", appointmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+    },
+  });
+}
+
 /** Check an appointment straight into today's queue with chair carried over. */
 export function useCheckInAppointment() {
   const qc = useQueryClient();
