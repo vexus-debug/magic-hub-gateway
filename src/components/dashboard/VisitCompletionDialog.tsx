@@ -27,13 +27,19 @@ interface Props {
 const naira = (n: number) => `₦${Number(n || 0).toLocaleString()}`;
 
 /** End-of-visit hand-off: review billables, attach prescriptions, send to billing, book recall. */
-export function VisitCompletionDialog({ open, onOpenChange, patientId, patientName, appointmentTreatmentId }: Props) {
+export function VisitCompletionDialog({ open, onOpenChange, patientId, patientName, appointmentTreatmentId, appointmentId }: Props) {
   const { currentOrg } = useOrg();
   const { data: treatments = [] } = useTreatments();
   const { data: planItems = [] } = usePatientPlanItems(open ? patientId : null);
   const { data: prescriptions = [] } = useTodaysPrescriptions(open ? patientId : null);
   const completeItems = useCompletePlanItems();
   const markInvoiced = useMarkPlanItemsInvoiced();
+  const completeAppointment = useCompleteAppointment();
+
+  const finishVisit = () => {
+    if (appointmentId) completeAppointment.mutate(appointmentId);
+    onOpenChange(false);
+  };
 
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [includeAppt, setIncludeAppt] = useState(true);
