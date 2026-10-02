@@ -46,7 +46,7 @@ export default function WaitingListPage() {
       const { data } = await (supabase as any).from("appointments").select("treatment_id").eq("id", entry.appointment_id).maybeSingle();
       treatmentId = data?.treatment_id || null;
     }
-    setWrapUp({ patientId: entry.patient_id, name: `${entry.patients?.first_name || ""} ${entry.patients?.last_name || ""}`.trim(), treatmentId });
+    setWrapUp({ patientId: entry.patient_id, name: `${entry.patients?.first_name || ""} ${entry.patients?.last_name || ""}`.trim(), treatmentId, appointmentId: entry.appointment_id || null });
   };
 
   const activeQueue = queue.filter((q) => q.status !== "completed");
@@ -237,6 +237,7 @@ export default function WaitingListPage() {
         patientId={wrapUp?.patientId}
         patientName={wrapUp?.name}
         appointmentTreatmentId={wrapUp?.treatmentId}
+        appointmentId={wrapUp?.appointmentId}
       />
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
