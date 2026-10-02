@@ -87,7 +87,7 @@ export function AppointmentDetailDialog({ appointment, open, onOpenChange, check
     if (!appointment) return;
     await updateAppointment.mutateAsync({ id: appointment.id, status: "in-progress" });
     onOpenChange(false);
-    navigate(link(terms.showDentalChart ? "dental-charts" : "patient", appointment.patient_id));
+    navigate(link("consent-forms", appointment.patient_id, { new: "1" }));
   };
 
   const wrapEl = (
@@ -203,7 +203,7 @@ export function AppointmentDetailDialog({ appointment, open, onOpenChange, check
                 </>
               )}
               {appointment.status === "in-progress" && (
-                <Button variant="outline" size="sm" onClick={() => { onOpenChange(false); navigate(link(terms.showDentalChart ? "dental-charts" : "patient", appointment.patient_id)); }}>
+                <Button variant="outline" size="sm" onClick={() => { onOpenChange(false); navigate(link("consent-forms", appointment.patient_id)); }}>
                   <Stethoscope className="h-3.5 w-3.5 mr-1" /> Open Visit
                 </Button>
               )}
