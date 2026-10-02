@@ -38,7 +38,7 @@ export default function WaitingListPage() {
   const [notes, setNotes] = useState("");
   const link = useClinicLinks();
   const terms = useClinicTerms();
-  const [wrapUp, setWrapUp] = useState<{ patientId: string; name: string; treatmentId: string | null } | null>(null);
+  const [wrapUp, setWrapUp] = useState<{ patientId: string; name: string; treatmentId: string | null; appointmentId: string | null } | null>(null);
 
   const openWrapUp = async (entry: any) => {
     let treatmentId: string | null = null;
