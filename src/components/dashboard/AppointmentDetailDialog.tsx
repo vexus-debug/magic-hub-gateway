@@ -97,6 +97,7 @@ export function AppointmentDetailDialog({ appointment, open, onOpenChange, check
       patientId={wrapAppt?.patient_id}
       patientName={wrapAppt?.patients ? `${wrapAppt.patients.first_name} ${wrapAppt.patients.last_name}` : undefined}
       appointmentTreatmentId={wrapAppt?.treatment_id}
+      appointmentId={wrapAppt?.id}
     />
   );
 

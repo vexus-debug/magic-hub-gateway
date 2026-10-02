@@ -203,6 +203,28 @@ export function useCompletePlanItems() {
   });
 }
 
+/** Today's in-progress appointment for a patient — the one a visit belongs to. */
+export function useActiveVisitAppointment(patientId?: string | null) {
+  const { currentOrg } = useOrg();
+  return useQuery({
+    queryKey: ["active-visit-appointment", patientId],
+    enabled: !!patientId && !!currentOrg?.org_id,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("appointments")
+        .select("id")
+        .eq("org_id", currentOrg?.org_id)
+        .eq("patient_id", patientId)
+        .eq("appointment_date", today())
+        .eq("status", "in-progress")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      return (data?.[0]?.id as string) || null;
+    },
+  });
+}
+
 /** Marks an appointment completed once its visit is finished. */
 export function useCompleteAppointment() {
   const qc = useQueryClient();
