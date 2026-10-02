@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Receipt, Pill, CalendarPlus, Printer, Plus, CheckCircle2 } from "lucide-react";
 import { useTreatments } from "@/hooks/useTreatments";
-import { usePatientPlanItems, useTodaysPrescriptions, useCompletePlanItems, useMarkPlanItemsInvoiced, useCompleteAppointment } from "@/hooks/useVisitFlow";
+import { usePatientPlanItems, useTodaysPrescriptions, useCompletePlanItems, useMarkPlanItemsInvoiced, useCompleteAppointment, useActiveVisitAppointment } from "@/hooks/useVisitFlow";
 import { CreateInvoiceDialog } from "@/components/dashboard/CreateInvoiceDialog";
 import { CreatePrescriptionDialog } from "@/components/dashboard/CreatePrescriptionDialog";
 import { BookAppointmentDialog } from "@/components/dashboard/BookAppointmentDialog";
@@ -35,9 +35,12 @@ export function VisitCompletionDialog({ open, onOpenChange, patientId, patientNa
   const completeItems = useCompletePlanItems();
   const markInvoiced = useMarkPlanItemsInvoiced();
   const completeAppointment = useCompleteAppointment();
+  // When opened from the visit bar, find today's in-progress appointment for this patient.
+  const { data: activeAppointmentId } = useActiveVisitAppointment(open && !appointmentId ? patientId : null);
 
   const finishVisit = () => {
-    if (appointmentId) completeAppointment.mutate(appointmentId);
+    const apptId = appointmentId || activeAppointmentId;
+    if (apptId) completeAppointment.mutate(apptId);
     onOpenChange(false);
   };
 
