@@ -203,7 +203,7 @@ export function AppointmentDetailDialog({ appointment, open, onOpenChange, check
                 </>
               )}
               {appointment.status === "in-progress" && (
-                <Button variant="outline" size="sm" onClick={() => { onOpenChange(false); navigate(link("consent-forms", appointment.patient_id, { new: "1" })); }}>
+                <Button variant="outline" size="sm" onClick={() => { onOpenChange(false); navigate(link("consent-forms", appointment.patient_id)); }}>
                   <Stethoscope className="h-3.5 w-3.5 mr-1" /> Open Visit
                 </Button>
               )}
