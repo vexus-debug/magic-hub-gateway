@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Receipt, Pill, CalendarPlus, Printer, Plus, CheckCircle2 } from "lucide-react";
 import { useTreatments } from "@/hooks/useTreatments";
-import { usePatientPlanItems, useTodaysPrescriptions, useCompletePlanItems } from "@/hooks/useVisitFlow";
+import { usePatientPlanItems, useTodaysPrescriptions, useCompletePlanItems, useMarkPlanItemsInvoiced } from "@/hooks/useVisitFlow";
 import { CreateInvoiceDialog } from "@/components/dashboard/CreateInvoiceDialog";
 import { CreatePrescriptionDialog } from "@/components/dashboard/CreatePrescriptionDialog";
 import { BookAppointmentDialog } from "@/components/dashboard/BookAppointmentDialog";
@@ -31,6 +31,7 @@ export function VisitCompletionDialog({ open, onOpenChange, patientId, patientNa
   const { data: planItems = [] } = usePatientPlanItems(open ? patientId : null);
   const { data: prescriptions = [] } = useTodaysPrescriptions(open ? patientId : null);
   const completeItems = useCompletePlanItems();
+  const markInvoiced = useMarkPlanItemsInvoiced();
 
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [includeAppt, setIncludeAppt] = useState(true);
@@ -39,10 +40,10 @@ export function VisitCompletionDialog({ open, onOpenChange, patientId, patientNa
   const [recallOpen, setRecallOpen] = useState(false);
   const [invoiceTreatmentIds, setInvoiceTreatmentIds] = useState<string[]>([]);
 
-  // Pre-tick everything completed today.
+  // Pre-tick completed and in-progress work (patients often pay ahead on long plans).
   useEffect(() => {
     if (!open) return;
-    setSelectedItems(new Set(planItems.filter((i) => i.status === "completed").map((i) => i.id)));
+    setSelectedItems(new Set(planItems.filter((i) => i.status === "completed" || i.status === "in-progress").map((i) => i.id)));
     setIncludeAppt(true);
   }, [open, planItems.length]);
 
@@ -62,7 +63,7 @@ export function VisitCompletionDialog({ open, onOpenChange, patientId, patientNa
   const unlinked = selected.filter((i) => !i.treatment_id);
 
   const sendToBilling = async () => {
-    const pending = selected.filter((i) => i.status !== "completed").map((i) => i.id);
+    const pending = selected.filter((i) => i.status !== "completed" && i.status !== "in-progress").map((i) => i.id);
     if (pending.length) await completeItems.mutateAsync(pending);
     const ids = selected.map((i) => i.treatment_id).filter(Boolean) as string[];
     if (includeAppt && appointmentTreatmentId && !ids.includes(appointmentTreatmentId)) ids.unshift(appointmentTreatmentId);
@@ -107,7 +108,7 @@ export function VisitCompletionDialog({ open, onOpenChange, patientId, patientNa
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <Badge variant={i.status === "completed" ? "secondary" : "outline"} className="text-[10px] capitalize">
-                        {i.status === "completed" ? "Done today" : i.status}
+                        {i.status === "completed" ? "Completed" : i.status === "in-progress" ? "In progress" : i.status}
                       </Badge>
                       <span className="text-[11px] text-muted-foreground truncate">{i.plan_name}</span>
                     </div>
@@ -116,7 +117,7 @@ export function VisitCompletionDialog({ open, onOpenChange, patientId, patientNa
                 </label>
               ))}
               {selected.some((i) => i.status !== "completed") && (
-                <p className="text-[11px] text-muted-foreground">Ticked items not yet done will be marked completed.</p>
+                <p className="text-[11px] text-muted-foreground">Ticked pending items will be marked completed. In-progress items stay in progress.</p>
               )}
               {unlinked.length > 0 && (
                 <p className="text-[11px] text-amber-600">{unlinked.length} item(s) aren't linked to a catalog treatment — add them on the invoice manually.</p>
@@ -197,6 +198,10 @@ export function VisitCompletionDialog({ open, onOpenChange, patientId, patientNa
             onOpenChange={setInvoiceOpen}
             preselectedPatientId={patientId}
             preselectedTreatmentIds={invoiceTreatmentIds.length ? invoiceTreatmentIds : undefined}
+            onCreated={async () => {
+              await markInvoiced.mutateAsync(selected.map((i) => ({ id: i.id, notes: i.notes })));
+              onOpenChange(false);
+            }}
           />
           <CreatePrescriptionDialog open={rxOpen} onOpenChange={setRxOpen} preselectedPatientId={patientId} />
           <BookAppointmentDialog open={recallOpen} onOpenChange={setRecallOpen} preselectedPatientId={patientId} />

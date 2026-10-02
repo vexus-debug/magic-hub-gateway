@@ -38,13 +38,15 @@ interface CreateInvoiceDialogProps {
   onOpenChange: (open: boolean) => void;
   preselectedPatientId?: string;
   preselectedTreatmentIds?: string[];
+  /** Fires after the invoice is saved. */
+  onCreated?: () => void;
 }
 
 function formatCurrency(amount: number) {
   return `₦${amount.toLocaleString()}`;
 }
 
-export function CreateInvoiceDialog({ open, onOpenChange, preselectedPatientId, preselectedTreatmentIds }: CreateInvoiceDialogProps) {
+export function CreateInvoiceDialog({ open, onOpenChange, preselectedPatientId, preselectedTreatmentIds, onCreated }: CreateInvoiceDialogProps) {
   const { data: patients = [] } = usePatients();
   const { data: treatments = [] } = useTreatments();
   const createInvoice = useCreateInvoice();
@@ -122,6 +124,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, preselectedPatientId, 
       });
       form.reset();
       onOpenChange(false);
+      onCreated?.();
     } catch (err: any) {
       toast({ title: "Error creating invoice", description: err.message, variant: "destructive" });
     }

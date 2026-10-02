@@ -26,6 +26,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
+import { SignaturePad } from "@/components/dashboard/SignaturePad";
+import { buildConsentPdf, urlToDataUrl } from "@/lib/consentPdf";
 
 const statusIcons: Record<string, any> = {
   pending: Clock,
@@ -60,6 +62,9 @@ export default function ConsentFormsPage() {
   const [signDialogOpen, setSignDialogOpen] = useState(false);
   const [selectedFormId, setSelectedFormId] = useState("");
   const [signerName, setSignerName] = useState("");
+  const [signature, setSignature] = useState<string | null>(null);
+  const [signing, setSigning] = useState(false);
+  const selectedForm: any = forms.find((f: any) => f.id === selectedFormId);
   const [uploadPatientId, setUploadPatientId] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
@@ -170,7 +175,11 @@ export default function ConsentFormsPage() {
       content: consentForm.content,
       created_by: user?.id,
     }, {
-      onSuccess: () => { setFormDialogOpen(false); setConsentForm({ patientId: ctxPatientId || "", templateId: "", title: "", content: "" }); },
+      onSuccess: (created: any) => {
+        setFormDialogOpen(false);
+        setConsentForm({ patientId: ctxPatientId || "", templateId: "", title: "", content: "" });
+        if (created?.id) { setSelectedFormId(created.id); setSignDialogOpen(true); }
+      },
     });
   };
 
@@ -181,11 +190,46 @@ export default function ConsentFormsPage() {
     }
   };
 
-  const handleSign = () => {
+  const handleSign = async () => {
     if (!selectedFormId || !signerName) return;
-    signForm.mutate({ id: selectedFormId, signer_name: signerName, witnessed_by: user?.id }, {
-      onSuccess: () => { setSignDialogOpen(false); setSignerName(""); },
-    });
+    setSigning(true);
+    try {
+      if (signature && selectedForm) {
+        const { data: org } = await (supabase as any).from("organizations").select("name, address, phone, email, logo_url").eq("id", currentOrg?.org_id).single();
+        const patientName = `${selectedForm.patients?.first_name || ""} ${selectedForm.patients?.last_name || ""}`.trim();
+        const date = new Date().toLocaleDateString();
+        const blob = buildConsentPdf({
+          clinic: { name: org?.name || currentOrg?.org_name || "Clinic", address: org?.address, phone: org?.phone, email: org?.email, logoDataUrl: await urlToDataUrl(org?.logo_url) },
+          title: selectedForm.title,
+          content: selectedForm.content || "",
+          patientName,
+          signerName,
+          signatureDataUrl: signature,
+          date,
+        });
+        const fileName = `${selectedForm.title.replace(/[^a-z0-9]+/gi, "-")}-${patientName.replace(/\s+/g, "-")}.pdf`;
+        await uploadDoc.mutateAsync({
+          file: new File([blob], fileName, { type: "application/pdf" }),
+          patientId: selectedForm.patient_id,
+          title: `Signed: ${selectedForm.title}`,
+          category: "signed_consent",
+          userId: user?.id,
+        });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      }
+      await signForm.mutateAsync({ id: selectedFormId, signer_name: signerName, witnessed_by: user?.id });
+      setSignDialogOpen(false);
+      setSignerName("");
+      setSignature(null);
+    } catch (err: any) {
+      toast({ title: "Could not sign", description: err.message, variant: "destructive" });
+    } finally {
+      setSigning(false);
+    }
   };
 
   const handleUploadScanned = (event?: React.MouseEvent<HTMLButtonElement>) => {
@@ -362,6 +406,9 @@ export default function ConsentFormsPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Create Patient Consent</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => { setFormDialogOpen(false); setUploadDialogOpen(true); }}>
+              <Upload className="mr-2 h-4 w-4" /> Have a paper form? Upload it instead
+            </Button>
             <div className="space-y-1">
               <Label className="text-xs">Patient *</Label>
               <Select value={consentForm.patientId} onValueChange={v => setConsentForm(f => ({ ...f, patientId: v }))}>
@@ -387,16 +434,24 @@ export default function ConsentFormsPage() {
       </Dialog>
 
       {/* Sign Dialog */}
-      <Dialog open={signDialogOpen} onOpenChange={setSignDialogOpen}>
-        <DialogContent className="max-w-sm">
+      <Dialog open={signDialogOpen} onOpenChange={(o) => { setSignDialogOpen(o); if (!o) setSignature(null); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Sign Consent Form</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {selectedForm?.content && (
+              <ScrollArea className="max-h-56 rounded-md border p-3">
+                <p className="text-sm font-medium mb-2">{selectedForm.title}</p>
+                <p className="text-xs whitespace-pre-wrap text-muted-foreground">{selectedForm.content}</p>
+              </ScrollArea>
+            )}
             <div className="space-y-1"><Label className="text-xs">Signer Full Name *</Label><Input value={signerName} onChange={e => setSignerName(e.target.value)} /></div>
+            <div className="space-y-1"><Label className="text-xs">Signature</Label><SignaturePad onChange={setSignature} /></div>
+            {signature && <p className="text-[11px] text-muted-foreground">A PDF with your clinic details and this signature will be saved to the patient's documents and downloaded.</p>}
             <p className="text-xs text-muted-foreground">By clicking "Sign", you confirm the patient has reviewed and agreed to the consent form.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSignDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSign} className="bg-secondary hover:bg-secondary/90" disabled={signForm.isPending || !signerName}>{signForm.isPending ? "Signing..." : "Sign"}</Button>
+            <Button onClick={() => void handleSign()} className="bg-secondary hover:bg-secondary/90" disabled={signing || !signerName}>{signing ? "Signing..." : signature ? "Sign & save PDF" : "Sign"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

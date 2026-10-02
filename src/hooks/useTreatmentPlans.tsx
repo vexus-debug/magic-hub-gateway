@@ -140,13 +140,14 @@ export function useUpdatePlanItemStatus() {
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const updates: any = { status };
-      if (status === "completed") updates.completed_date = new Date().toISOString().split("T")[0];
+      updates.completed_date = status === "completed" ? new Date().toISOString().split("T")[0] : null;
       const { error } = await (supabase as any).from("treatment_plan_items").update(updates).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["treatment-plan-items"] });
       qc.invalidateQueries({ queryKey: ["treatment-plans"] });
+      qc.invalidateQueries({ queryKey: ["patient-plan-items"] });
       toast({ title: "Visit status updated" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
