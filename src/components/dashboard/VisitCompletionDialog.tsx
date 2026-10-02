@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Receipt, Pill, CalendarPlus, Printer, Plus, CheckCircle2 } from "lucide-react";
 import { useTreatments } from "@/hooks/useTreatments";
-import { usePatientPlanItems, useTodaysPrescriptions, useCompletePlanItems, useMarkPlanItemsInvoiced } from "@/hooks/useVisitFlow";
+import { usePatientPlanItems, useTodaysPrescriptions, useCompletePlanItems, useMarkPlanItemsInvoiced, useCompleteAppointment, useActiveVisitAppointment } from "@/hooks/useVisitFlow";
 import { CreateInvoiceDialog } from "@/components/dashboard/CreateInvoiceDialog";
 import { CreatePrescriptionDialog } from "@/components/dashboard/CreatePrescriptionDialog";
 import { BookAppointmentDialog } from "@/components/dashboard/BookAppointmentDialog";
@@ -20,18 +20,29 @@ interface Props {
   patientName?: string;
   /** Treatment booked on the appointment, auto-included in the bill. */
   appointmentTreatmentId?: string | null;
+  /** Appointment this visit belongs to — marked completed when the visit is finished. */
+  appointmentId?: string | null;
 }
 
 const naira = (n: number) => `₦${Number(n || 0).toLocaleString()}`;
 
 /** End-of-visit hand-off: review billables, attach prescriptions, send to billing, book recall. */
-export function VisitCompletionDialog({ open, onOpenChange, patientId, patientName, appointmentTreatmentId }: Props) {
+export function VisitCompletionDialog({ open, onOpenChange, patientId, patientName, appointmentTreatmentId, appointmentId }: Props) {
   const { currentOrg } = useOrg();
   const { data: treatments = [] } = useTreatments();
   const { data: planItems = [] } = usePatientPlanItems(open ? patientId : null);
   const { data: prescriptions = [] } = useTodaysPrescriptions(open ? patientId : null);
   const completeItems = useCompletePlanItems();
   const markInvoiced = useMarkPlanItemsInvoiced();
+  const completeAppointment = useCompleteAppointment();
+  // When opened from the visit bar, find today's in-progress appointment for this patient.
+  const { data: activeAppointmentId } = useActiveVisitAppointment(open && !appointmentId ? patientId : null);
+
+  const finishVisit = () => {
+    const apptId = appointmentId || activeAppointmentId;
+    if (apptId) completeAppointment.mutate(apptId);
+    onOpenChange(false);
+  };
 
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [includeAppt, setIncludeAppt] = useState(true);
@@ -185,7 +196,7 @@ export function VisitCompletionDialog({ open, onOpenChange, patientId, patientNa
               <Button variant="outline" onClick={() => setRecallOpen(true)}>
                 <CalendarPlus className="h-4 w-4 mr-2" /> Book next appointment
               </Button>
-              <Button variant="ghost" onClick={() => onOpenChange(false)}>Done for now</Button>
+              <Button variant="ghost" onClick={finishVisit}>Done for now</Button>
             </div>
           </div>
         </SheetContent>
@@ -200,7 +211,7 @@ export function VisitCompletionDialog({ open, onOpenChange, patientId, patientNa
             preselectedTreatmentIds={invoiceTreatmentIds.length ? invoiceTreatmentIds : undefined}
             onCreated={async () => {
               await markInvoiced.mutateAsync(selected.map((i) => ({ id: i.id, notes: i.notes })));
-              onOpenChange(false);
+              finishVisit();
             }}
           />
           <CreatePrescriptionDialog open={rxOpen} onOpenChange={setRxOpen} preselectedPatientId={patientId} />
