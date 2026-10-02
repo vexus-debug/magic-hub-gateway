@@ -193,7 +193,7 @@ export function VisitCompletionDialog({ open, onOpenChange, patientId, patientNa
               <Button variant="outline" onClick={() => setRecallOpen(true)}>
                 <CalendarPlus className="h-4 w-4 mr-2" /> Book next appointment
               </Button>
-              <Button variant="ghost" onClick={() => onOpenChange(false)}>Done for now</Button>
+              <Button variant="ghost" onClick={finishVisit}>Done for now</Button>
             </div>
           </div>
         </SheetContent>
@@ -208,7 +208,7 @@ export function VisitCompletionDialog({ open, onOpenChange, patientId, patientNa
             preselectedTreatmentIds={invoiceTreatmentIds.length ? invoiceTreatmentIds : undefined}
             onCreated={async () => {
               await markInvoiced.mutateAsync(selected.map((i) => ({ id: i.id, notes: i.notes })));
-              onOpenChange(false);
+              finishVisit();
             }}
           />
           <CreatePrescriptionDialog open={rxOpen} onOpenChange={setRxOpen} preselectedPatientId={patientId} />
